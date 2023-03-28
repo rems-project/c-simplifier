@@ -101,6 +101,7 @@ target_link_libraries(
 	clangSerialization
 	clangTooling
 	-Wl,--end-group
+	-lstdc++fs
 	${LLVM_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT})
 

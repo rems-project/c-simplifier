@@ -77,7 +77,7 @@
 
 find_program(
 	LLVM_CONFIG_PROGRAM
-	NAMES "llvm-config")
+	NAMES "llvm-config" "llvm-config-10")
 
 if(LLVM_CONFIG_PROGRAM)
 	# Extract include directories from cxxflags
@@ -136,4 +136,3 @@ else()
 	# Unset the flag
 	set(LLVM_FOUND "NO")
 endif()
-
