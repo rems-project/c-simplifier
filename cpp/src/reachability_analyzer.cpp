@@ -151,31 +151,91 @@ class InputValidator {
         return false;
     }
 
+    std::string name_of(const clang::Decl *decl) {
+        if (const auto named_decl = clang::dyn_cast<clang::NamedDecl>(decl)) {
+            return named_decl->getNameAsString();
+        } else {
+            return std::string();
+        }
+    }
+
+    bool RecordMemberDiffLines(const clang::RecordDecl *record) {
+        auto it = record->decls_begin();
+        const auto end = record->decls_end();
+
+        // empty case
+        if (it == end)
+            return false;
+
+        auto result = false;
+
+        const auto braces = record->getBraceRange();
+        auto lhs = sm.getPresumedLoc(braces.getBegin());
+        std::string lhs_str("{");
+        std::cerr << '{' << std::endl;
+
+        const auto compare = [&](const clang::SourceLocation loc, const std::string rhs_str) {
+            std::cerr << "  ";
+            if (it != end)
+                (*it)->dump();
+            std::cerr << std::endl;
+            const auto rhs = sm.getPresumedLoc(loc);
+            if (lhs.getLine() == rhs.getLine()) {
+                result = false;
+                std::cerr << "===" << std::endl;
+                diagnostics.Report(loc, not_after_id) << lhs_str << rhs_str;
+                std::cerr << "===" << std::endl << std::endl;
+            }
+            lhs = rhs;
+            lhs_str = rhs_str;
+        };
+
+        do {
+            if (clang::isa<clang::RecordDecl>(*it)) {
+                ++it;
+                if (it == end)
+                    break;
+            }
+            compare((*it)->getBeginLoc(), name_of(*it));
+        } while (++it != end);
+
+        // last case
+        std::cerr << '}' << std::endl;
+        compare(braces.getEnd(), std::string("}"));
+
+        // if (!result) record->dump();
+        return result;
+    }
+
   public:
     InputValidator(clang::DiagnosticsEngine &diagnostics, const clang::SourceManager &sm,
                    const unsigned not_after_id)
         : diagnostics(diagnostics), sm(sm), not_after_id(not_after_id) {}
 
+
     bool ToplevelOnDiffLines(const clang::TranslationUnitDecl *tu) {
         auto it = tu->decls_begin();
         const auto end = tu->decls_end();
-        const auto name_of = [](auto *decl) {
-            if (const auto named_decl = clang::dyn_cast<clang::NamedDecl>(decl)) {
-                return named_decl->getNameAsString();
-            }
-            return std::string();
-        };
-
-        auto result = true;
 
         // empty case
         if (it == end)
-            return result;
+            return true;
 
         // non-empty case
-        auto *prev = *it;
+        auto result = true;
+        auto prev = *it;
+        // TODO run record decl checking AFTER traversal and BEFORE marking
+        // TODO if sensible (order-preserving) coudld do the same for top-level decls
+        if (const auto record = clang::dyn_cast<clang::RecordDecl>(prev);
+            record && record->isCompleteDefinition()) {
+            result &= RecordMemberDiffLines(record);
+        }
         while (++it != end) {
-            auto *const curr = *it;
+            const auto curr = *it;
+            if (const auto record = clang::dyn_cast<clang::RecordDecl>(prev);
+                record && record->isCompleteDefinition()) {
+                result &= RecordMemberDiffLines(record);
+            }
             if (!IsBefore(prev, curr)) {
                 result = false;
                 diagnostics.Report(curr->getBeginLoc(), not_after_id)
