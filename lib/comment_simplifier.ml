@@ -43,23 +43,32 @@ module Lexer : sig
     | Eof_in_string
     | New_line_in_string
     | No_code_after_multiline_block_comment
+
   exception Error of err * Lexing.position
+
   val line_start : (char -> unit) -> Lexing.lexbuf -> unit
   val pp_err : Format.formatter -> err -> unit
   val show_err : err -> string
-end = Lexer
+end =
+  Lexer
 
-let lex ?(print_char=print_char) lexbuf =
-  try
-    Result.ok @@ Lexer.line_start print_char lexbuf 
-  with
-  | Lexer.Error (reason, pos) -> Result.error (reason, pos)
+type input = Stdin | String | File of string
+type position = { file : input; line : int; column : int; seek_pos : int }
 
-let from_stdin () =
-  lex @@ Lexing.from_channel stdin
+let lex ?(print_char = print_char) file lexbuf =
+  try Result.ok @@ Lexer.line_start print_char lexbuf
+  with Lexer.Error (reason, pos) ->
+    Result.error
+      ( reason,
+        {
+          file;
+          line = pos.pos_lnum;
+          column = pos.pos_cnum - pos.pos_bol;
+          seek_pos = pos.pos_bol;
+        } )
 
-let from_string str =
-  lex @@ Lexing.from_string str
+let from_stdin () = lex Stdin @@ Lexing.from_channel stdin
+let from_string str = lex String @@ Lexing.from_string str
 
 let from_file ?tmp_file file =
   let print_char, close_out =
@@ -71,5 +80,41 @@ let from_file ?tmp_file file =
   in
   let channel = Stdlib.open_in file in
   Fun.protect
-    (fun () -> lex ~print_char @@ Lexing.from_channel channel)
-    ~finally:(fun () -> close_out (); close_in channel)
+    (fun () -> lex ~print_char (File file) @@ Lexing.from_channel channel)
+    ~finally:(fun () ->
+      close_out ();
+      close_in channel)
+
+let format_err reason =
+  Str.(
+    reason |> Lexer.show_err
+    |> global_replace (regexp "Lexer\\.") ""
+    |> global_replace (regexp "_") " "
+    |> String.lowercase_ascii)
+
+let format_err reason pos =
+  let file =
+    match pos.file with
+    | File file -> file
+    | Stdin -> "stdin"
+    | String -> "string"
+  in
+  Format.sprintf "%s:%d:%d: error: %s" file pos.line pos.column
+    (format_err reason)
+
+let format_err reason pos =
+  let str = format_err reason pos in
+  match pos.file with
+  | Stdin | String -> str
+  | File file ->
+      let channel = open_in file in
+      let line =
+        Fun.protect
+          (fun () ->
+            seek_in channel pos.seek_pos;
+            input_line channel)
+          ~finally:(fun () -> close_in channel)
+      in
+      let caret = Bytes.make pos.column ' ' in
+      Bytes.set caret (pos.column - 1) '^';
+      String.concat "\n" [ str; line; Bytes.to_string caret ]

@@ -38,69 +38,60 @@
 (***************************************************************************)
 
 open Shexp_process
+module Cs = Comment_simplifier
+
+let proc_iter = List.iter
+
 module List = Stdlib.List
 
 let ( let* ) x f = bind ~f x
-let list_files dir = FileUtil.find Is_file dir (Fun.flip Stdlib.List.cons) []
-
-let format_reason reason =
-  Str.(reason
-    |> Comment_simplifier.Lexer.show_err
-    |> global_replace (regexp "Lexer\\.") ""
-    |> global_replace (regexp "_") "")
-
-let format_err reason (pos : Lexing.position) =
-  Format.sprintf "error: %s in %s:%d:%d"
-    (format_reason reason)
-    pos.pos_fname
-    pos.pos_lnum
-    pos.pos_cnum
-
-let comment_simplify file =
-  with_temp_file ~prefix:"c-tree-carve-" ~suffix:".txt" (fun tmp_file ->
-      match Comment_simplifier.from_file ~tmp_file file with
-      | Result.Ok () ->  FileUtil.cp [ tmp_file ] file; return None
-      | Result.Error (reason, pos) -> return (Some (format_err reason pos)))
+let ( >> ) = Infix.( >> )
 
 let rec filter_map f = function
   | [] -> return []
-  | x :: xs ->
-    let* result = f x in
-    match result with
-    | None -> filter_map f xs
-    | Some x ->
-      let* xs = filter_map f xs in
-      return (x :: xs)
+  | x :: xs -> (
+      let* result = f x in
+      match result with
+      | None -> filter_map f xs
+      | Some x ->
+          let* xs = filter_map f xs in
+          return (x :: xs))
+
+let list_files dir = FileUtil.find Is_file dir (Fun.flip List.cons) []
+
+let comment_simplify file =
+  with_temp_file ~prefix:"c-tree-carve-" ~suffix:".txt" (fun tmp_file ->
+      match Cs.from_file ~tmp_file file with
+      | Result.Ok () ->
+          FileUtil.cp [ tmp_file ] file;
+          return None
+      | Result.Error (reason, pos) -> return (Some (reason, pos)))
 
 let fixup output =
   Str.(
     global_replace
       (regexp "clang-tree-carve\\(\\.exe\\)?")
-      "c-tree-carve" output)
+      (FilePath.basename Sys.executable_name)
+      output)
 
-let dir_exists dir =
-  try FileUtil.test Is_dir dir with _ -> false
+let dir_exists dir = try Sys.is_directory dir with _ -> false
 
 let prog =
   let args = Array.to_list Sys.argv in
-  let* exit_code, output =
-    run_exit_code "clang-tree-carve.exe" (Stdlib.List.tl args)
-    |> capture [ Std_io.Stdout; Std_io.Stderr ]
+  let* (exit_code, stdout), stderr =
+    run_exit_code "clang-tree-carve.exe" (List.tl args)
+    |> capture [ Std_io.Stdout ] |> capture [ Std_io.Stderr ]
   in
-  if exit_code <> 0 then
-    let* () = eprint @@ fixup output in
-    return exit_code
-  else if not @@ dir_exists output then
-    let* () = echo ~n:() (fixup output) in
-    return 0
+  eprint @@ fixup stderr
+  >>
+  if exit_code <> 0 then return exit_code
+  else if not @@ dir_exists stdout then echo ~n:() (fixup stdout) >> return 0
   else
-    let* errs = filter_map comment_simplify @@ list_files output in
+    let* errs = filter_map comment_simplify @@ list_files stdout in
     match errs with
-    | [] ->
-      let* () = echo ~n:() output in
-      return 0
+    | [] -> echo ~n:() stdout >> return 0
     | _ :: _ ->
-      let* () = Shexp_process.List.iter ~f:echo errs in
-      return 1
+        proc_iter errs ~f:(fun (r, p) -> eprint @@ Cs.format_file_err r p)
+        >> return 1
 
 let () = exit @@ eval ~context:(Context.create ()) prog

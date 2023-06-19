@@ -1,6 +1,8 @@
 (library
  (name comment_simplifier)
  (modules comment_simplifier lexer)
- (preprocess (pps ppx_deriving.show)))
+ (libraries str)
+ (preprocess
+  (pps ppx_deriving.show)))
 
 (ocamllex lexer)
