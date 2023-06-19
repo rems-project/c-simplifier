@@ -37,15 +37,29 @@
 (*  SUCH DAMAGE.                                                           *)
 (***************************************************************************)
 
-module Lexer = Lexer
+module Lexer : sig
+  type err =
+    | Eof_in_comment
+    | Eof_in_string
+    | New_line_in_string
+    | No_code_after_multiline_block_comment
+  exception Error of err * Lexing.position
+  val line_start : (char -> unit) -> Lexing.lexbuf -> unit
+  val pp_err : Format.formatter -> err -> unit
+  val show_err : err -> string
+end = Lexer
+
+let lex ?(print_char=print_char) lexbuf =
+  try
+    Result.ok @@ Lexer.line_start print_char lexbuf 
+  with
+  | Lexer.Error (reason, pos) -> Result.error (reason, pos)
 
 let from_stdin () =
-  let lexbuf = Lexing.from_channel stdin in
-  Lexer.line_start print_char lexbuf
+  lex @@ Lexing.from_channel stdin
 
 let from_string str =
-  let lexbuf = Lexing.from_string str in
-  Lexer.line_start print_char lexbuf
+  lex @@ Lexing.from_string str
 
 let from_file ?tmp_file file =
   let print_char, close_out =
@@ -56,7 +70,6 @@ let from_file ?tmp_file file =
         (output_char channel, fun () -> close_out channel)
   in
   let channel = Stdlib.open_in file in
-  let lexbuf = Lexing.from_channel channel in
-  let () = Lexer.line_start print_char lexbuf in
-  close_out ();
-  close_in channel
+  Fun.protect
+    (fun () -> lex ~print_char @@ Lexing.from_channel channel)
+    ~finally:(fun () -> close_out (); close_in channel)

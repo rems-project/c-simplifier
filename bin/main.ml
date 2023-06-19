@@ -43,17 +43,43 @@ module List = Stdlib.List
 let ( let* ) x f = bind ~f x
 let list_files dir = FileUtil.find Is_file dir (Fun.flip Stdlib.List.cons) []
 
+let format_reason reason =
+  Str.(reason
+    |> Comment_simplifier.Lexer.show_err
+    |> global_replace (regexp "Lexer\\.") ""
+    |> global_replace (regexp "_") "")
+
+let format_err reason (pos : Lexing.position) =
+  Format.sprintf "error: %s in %s:%d:%d"
+    (format_reason reason)
+    pos.pos_fname
+    pos.pos_lnum
+    pos.pos_cnum
+
 let comment_simplify file =
   with_temp_file ~prefix:"c-tree-carve-" ~suffix:".txt" (fun tmp_file ->
-      Comment_simplifier.from_file ~tmp_file file;
-      FileUtil.cp [ tmp_file ] file;
-      return ())
+      match Comment_simplifier.from_file ~tmp_file file with
+      | Result.Ok () ->  FileUtil.cp [ tmp_file ] file; return None
+      | Result.Error (reason, pos) -> return (Some (format_err reason pos)))
+
+let rec filter_map f = function
+  | [] -> return []
+  | x :: xs ->
+    let* result = f x in
+    match result with
+    | None -> filter_map f xs
+    | Some x ->
+      let* xs = filter_map f xs in
+      return (x :: xs)
 
 let fixup output =
   Str.(
     global_replace
       (regexp "clang-tree-carve\\(\\.exe\\)?")
       "c-tree-carve" output)
+
+let dir_exists dir =
+  try FileUtil.test Is_dir dir with _ -> false
 
 let prog =
   let args = Array.to_list Sys.argv in
@@ -63,15 +89,18 @@ let prog =
   in
   if exit_code <> 0 then
     let* () = eprint @@ fixup output in
-    return 1
-  else if try FileUtil.test Is_dir output with _ -> false then
-    let* () =
-      Shexp_process.List.iter ~f:comment_simplify @@ list_files output
-    in
-    let* () = echo ~n:() output in
-    return 0
-  else
+    return exit_code
+  else if not @@ dir_exists output then
     let* () = echo ~n:() (fixup output) in
     return 0
+  else
+    let* errs = filter_map comment_simplify @@ list_files output in
+    match errs with
+    | [] ->
+      let* () = echo ~n:() output in
+      return 0
+    | _ :: _ ->
+      let* () = Shexp_process.List.iter ~f:echo errs in
+      return 1
 
 let () = exit @@ eval ~context:(Context.create ()) prog

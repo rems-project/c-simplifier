@@ -38,7 +38,6 @@
 (***************************************************************************)
 
 module Cs = Comment_simplifier
-module L = Cs.Lexer
 
 let ignor = "//-"
 let esc_nl = "\\\n"
@@ -55,12 +54,10 @@ let ignored_block_comment =
 let empty_line = [ esc_nl; "//"; "\n"; "/*"; "empty_line" ]
 
 let test_string str =
-  try Cs.from_string str with
-  | L.Error No_code_after_multi_line_block_comment ->
-      print_string "No_code_after_multi_line_block_comment"
-  | L.Error Eof_in_comment -> print_string "Eof_in_comment"
-  | L.Error Eof_in_string -> print_string "Eof_in_string"
-  | L.Error Newline_in_string -> print_string "Newline_in_string"
+  match Cs.from_string str with
+  | Result.Ok () -> ()
+  | Result.Error (reason, pos) ->
+    Printf.printf "%s: string:%d:%d" (Cs.Lexer.show_err reason) pos.pos_lnum pos.pos_cnum
 
 let test_all tests =
   List.iter
