@@ -29,14 +29,14 @@
      (fileutils (>= 0.6.4))
      (shexp (>= v0.15.0))
      (ocamlformat (and (>= 0.25.1) :dev))
-     (ppx_expect (and (>= 5.2.1)))
+     (ppx_deriving (and (>= 5.2.1)))
      (ppx_expect (and (>= v0.15.1) :with-test)))
 
  (tags
   (topics c clang tool tree-carving)))
 
 (package
- (name conf-clang-12)
+ (name conf-libclang-12-dev)
  (allow_empty))
 
 
