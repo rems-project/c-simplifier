@@ -130,18 +130,18 @@ class PPRecordNested : public clang::PPCallbacks {
         // input:
         // ```
         // 1|#define MACRO \
-		// 2|"hi"
+        // 2|"hi"
         // ```
         //
         // intended output:
         // ```
         // 1|#define MACRO \
-		// 2|"hi"
+        // 2|"hi"
         //
         /// previous wrong output:
         // ```
         // 1|#define MACRO \
-		// 2|//-"hi"
+        // 2|//-"hi"
         // ```
         //
         // Futhermore, it seems like the PreprocessingRecord is filled up first,
