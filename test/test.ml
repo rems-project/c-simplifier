@@ -70,6 +70,40 @@ let test_all tests =
 let test_with prefix tests =
   test_all @@ List.map (fun x -> String.concat " " (prefix @ [ x ])) tests
 
+let%expect_test "kept_line" =
+  test_all kept_line;
+  [%expect
+    {|
+      \
+
+      -->
+      \
+
+      ====
+
+
+      -->
+
+
+      ====
+      //
+      -->
+      //
+      ====
+      /*
+      -->
+      /*string:1:2: error: eof in comment
+      ====
+      "
+      -->
+      "string:1:1: error: eof in string
+      ====
+      kept_line
+      -->
+      kept_line
+      ====
+      |}]
+
 let%expect_test "line_start -> _" =
   test_all line_start;
   [%expect

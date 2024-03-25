@@ -80,8 +80,20 @@ let ignor = "//-"
 rule line_start write = parse
   | ignor { ignored_line [] write lexbuf }
   | eof   { () }
-  | _     { write (lexeme_char lexbuf 0);
-            kept_line write lexbuf }
+  (* have to copy in kept_line for correct behaviour *)
+  | esc_nl { esc_newline kept_line ~write lexbuf }
+  | '\n'   { newline line_start ~write lexbuf }
+  | "//"   { String.iter write (lexeme lexbuf);
+             commented_line write lexbuf }
+  | "/*"   { String.iter write (lexeme lexbuf);
+             kept_block_comment write lexbuf;
+             kept_line write lexbuf }
+  | '"'    { write (lexeme_char lexbuf 0);
+             kept_str write lexbuf;
+             kept_line write lexbuf }
+  | _      { write (lexeme_char lexbuf 0);
+             kept_line write lexbuf }
+
 
 (* line kept so cannot run-over with block-comment *)
 and kept_line write = parse
@@ -118,7 +130,7 @@ and kept_str write = parse
   | _        { write (lexeme_char lexbuf 0);
                kept_str write lexbuf }
 
-(* assume: - in ignored line,"//-" not written, `buf' seen so far *)
+(* assume: - in ignored line, "//-" not written, `buf' seen so far *)
 and ignored_line buf write = parse
   | eof    { List.iter write (List.rev buf) }
   | ws     { ignored_line (rev_char_list (lexeme lexbuf) @ buf) write lexbuf }
