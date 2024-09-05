@@ -22,7 +22,6 @@
  (depends
      (ocaml (>= 4.12.0))
      conf-c++
-     conf-clang-12
      (conf-cmake :dev)
      (conf-llvm (= 12.0.1))
      (conf-python3 :with-test)
