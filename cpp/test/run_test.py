@@ -113,7 +113,7 @@ class Carver:
 
     def run(self, input_rel_path):
         cwd = os.getcwd()
-        completed = subprocess.run([self.carver, input_rel_path], capture_output=True, text=True)
+        completed = subprocess.run([self.carver, '-r=main', input_rel_path], capture_output=True, text=True)
         return completed.stdout if completed.stdout != None else completed.stderr
 
     def output(self, input_rel_path):
