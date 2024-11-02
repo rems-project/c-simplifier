@@ -88,8 +88,8 @@ pKVM, without having to support irrelevant C constructs.
 
 ### Prerequisites
 
-- GNU C++ compiler >= 9.4
-- LLVM/Clang 12.0.0
+- C++ 17 compiler
+- LLVM/Clang 15.0.7
 - CMake >= 3.16.3
 - OCaml & Libraries (see opam file)
 
