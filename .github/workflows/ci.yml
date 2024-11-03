@@ -16,7 +16,7 @@ jobs:
   build:
     strategy:
       matrix:
-        version: [4.14.1]
+        version: [4.14.1, 5.2.0]
 
 
     runs-on: ubuntu-22.04
