@@ -38,21 +38,16 @@
 ###########################################################################
 
 # This is helpful: https://alexreinking.com/blog/how-to-use-cmake-without-the-agonizing-pain-part-1.html
+# This may be too: https://github.com/onqtam/awesome-cmake
 
 cmake_minimum_required(VERSION 3.16.3)
 project(clang-tree-carver)
 
 find_package(LLVM "15.0.7" REQUIRED CONFIG)
-# Not sure what the correct/idiomatic CMake is for a situation where packages
-# aren't version but CMake defaults to a wrong but earlier one instead of a
-# correct later one.
-#   /usr/lib/cmake/clang-12/ClangConfig.cmake, version: unknown
-#   /usr/lib/cmake/clang-15/ClangConfig.cmake, version: unknown
-#   /lib/cmake/clang-12/ClangConfig.cmake, version: unknown
-#   /lib/cmake/clang-15/ClangConfig.cmake, version: unknown
-# So I'm hard-coding it.
-set(Clang_DIR "/usr/lib/cmake/clang-15")
-find_package(Clang REQUIRED CONFIG)
+message("LLVM Libraries: ${LLVM_LIBRARY_DIRS}")
+# For some reason, ClangConfig.cmake isn't versioned, and so if there are 
+# multiple ones on the system, it may pick the wrong one, hence the below hint.
+find_package(Clang REQUIRED CONFIG HINTS "${LLVM_LIBRARY_DIRS}/cmake")
 
 set(CLANG_LIBS
     clangAnalysis
@@ -77,7 +72,7 @@ file(GLOB CXX_SOURCES "*.cpp")
 
 # # Whilst it is do-able, and not too icky to link directly with
 # # the library instead of calling out to a different process,
-# # there the linker-flags had to be copied over into a dune file manually
+# # the linker-flags had to be copied over into a dune file manually
 # # and the library & executable sizes ended up being stupidly large.
 
 # # For binding via OCaml

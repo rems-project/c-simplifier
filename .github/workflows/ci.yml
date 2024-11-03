@@ -24,9 +24,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    # clang-15 seems to be required for ClangConfig.cmake
-    # libclang-14-dev and libclang-cpp14-dev seem to be for the opam conf-libclang package
-    # llvm-15-dev seems to be for the LLVM cmake files/package
+    # clang-15 is for ClangConfig.cmake
+    # libclang-14-dev and libclang-cpp14-dev are for the (silly) opam conf-libclang.15 package
+    #     more details: https://github.com/ocaml/opam-repository/issues/26827
+    # llvm-15-dev is for LLVMConfig.cmake
     - name: System dependencies (ubuntu)
       run: |
         sudo apt-get install clang-15 cmake libclang-14-dev libclang-15-dev libclang-cpp14-dev llvm-15-dev opam python3
