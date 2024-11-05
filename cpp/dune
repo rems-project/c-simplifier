@@ -23,7 +23,7 @@
       _build))
     (with-outputs-to
      cmake_build.txt
-     (run cmake --build _build))
+     (run cmake --build _build --parallel))
     (copy _build/clang-tree-carve clang-tree-carve.exe)))))
 
 (rule
