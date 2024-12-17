@@ -89,7 +89,7 @@ pKVM, without having to support irrelevant C constructs.
 ### Prerequisites
 
 - C++ 17 compiler
-- LLVM/Clang 15.0.7
+- LLVM/Clang 15.0.7 (see CI workflow)
 - CMake >= 3.16.3
 - OCaml & Libraries (see opam file)
 
@@ -145,11 +145,10 @@ all the tests. Additional options in `./test/run_test.py -h`.
 - [x] Support retaining relevant includes
 - [x] Make build system straightforward
 - [x] Input validation for top-level decls
-- [X] Source locations for comment-simplifier
-- [ ] Update `conf-clang-12.opam.template` to handle more distributions
+- [x] Source locations for comment-simplifier
+- [x] Update CI
 - [ ] Input validation for struct/union fields
 - [ ] End-to-end tests
-- [ ] Update .travis.yml
 - [ ] Add licenses/headache for tests?
 - [ ] Use `ASTContext::getTypeInfo` to fill in missing struct fields
 - [ ] Add new tests for new functionality (`test/to-add`, input validation, buddy allocator)
