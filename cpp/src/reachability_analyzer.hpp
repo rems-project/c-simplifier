@@ -144,7 +144,7 @@ class PPRecordNested : public clang::PPCallbacks {
         // 2|//-"hi"
         // ```
         //
-        // Futhermore, it seems like the PreprocessingRecord is filled up first,
+        // Furthermore, it seems like the PreprocessingRecord is filled up first,
         // before any user-defined callbacks are run. This means that adjusting the
         // source range for macros in HandleMacroDefine is too late.
         if (const auto num_tokens = macro_info->getNumTokens(); num_tokens > 0) {
