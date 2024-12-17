@@ -351,16 +351,12 @@ void ReachabilityAnalyzer::findMacroDefns(clang::PreprocessingRecord &pr,
 }
 
 // 1. The PreprocessingRecord only inlcudes the Macro expanded when typed into
-// the source,
-//    not any subsequent macros expanded _inside a macro_.
-// 2. None of
-// SourceManager::{getFileLoc,getExpansionLoc,get(Immediate)SpellingLoc}()
-// enable
-//    to go from the source _down_/expand the Macros, only to go from a fully
-//    expanded location back up to the source.
+//    the source, not any subsequent macros expanded _inside a macro_.
+// 2. None of getFileLoc, getExpansionLoc, get(Immediate)SpellingLoc, in
+//    SourceManager::() enable to go from the source _down_/expand the macros,
+//    only to go from a fully expanded location back up to the source.
 // 3. It seems difficult/not sensible to re-lex/pp the macro _definition_ to get
-// at the macros
-//    it refers to.
+//    at the macros it refers to.
 // Therefore, we add a PPCallback that records _all_ macro expansions, even
 // those that occur within a macro.
 void ReachabilityAnalyzer::ExecuteAction() {
